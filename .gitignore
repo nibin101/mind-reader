@@ -1,0 +1,8 @@
+.env
+node_modules/
+*.log
+__pycache__/
+*.pyc
+.DS_Store
+emotion_model.h5
+tfjs_model/

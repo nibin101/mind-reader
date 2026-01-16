@@ -1,0 +1,36 @@
+{
+  "name": "emotion-bridge-game",
+  "version": "1.0.0",
+  "description": "Bridge building game with emotion recognition and story mode",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "story-server": "node story-server.js",
+    "dev": "concurrently \"npm run story-server\" \"python3 -m http.server 8000\""
+  },
+  "dependencies": {
+    "@tensorflow/tfjs": "^4.11.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.1",
+    "openai": "^4.104.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
