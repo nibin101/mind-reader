@@ -4,7 +4,7 @@ import { useGame } from '../context/GameContext';
 import { analyzePerformance } from '../engine/GameEngine';
 import { useNavigate } from 'react-router-dom';
 
-const SpatialRecall = () => {
+const SpatialRecall = ({ nextGame }) => {
     const { updateGameResult, userProfile } = useGame();
     const navigate = useNavigate();
     const [level, setLevel] = useState(1);
@@ -80,7 +80,16 @@ const SpatialRecall = () => {
         setPhase('ended');
         const analysis = analyzePerformance('spatial-recall', metrics, userProfile.age);
         updateGameResult('spatialRecall', analysis);
-        setTimeout(() => navigate('/results'), 2000); // Go to results finally
+        console.log('SpatialRecall completed. Next game:', nextGame);
+        setTimeout(() => {
+            if (!nextGame || nextGame === 'results') {
+                console.log('Navigating to results');
+                navigate('/results');
+            } else {
+                console.log('Navigating to:', `/play/${nextGame}`);
+                navigate(`/play/${nextGame}`);
+            }
+        }, 2000);
     };
 
     return (

@@ -4,7 +4,7 @@ import { analyzePerformance } from '../engine/GameEngine';
 import { useNavigate } from 'react-router-dom';
 import { Zap, AlertTriangle } from 'lucide-react';
 
-const FocusFlight = () => {
+const FocusFlight = ({ nextGame }) => {
     const { updateGameResult, userProfile } = useGame();
     const navigate = useNavigate();
     const [gameState, setGameState] = useState('start');
@@ -110,7 +110,16 @@ const FocusFlight = () => {
         cancelAnimationFrame(requestRef.current);
         const analysis = analyzePerformance('focus-flight', metrics, userProfile.age);
         updateGameResult('focusFlight', score, analysis.grade, metrics);
-        setTimeout(() => navigate('/play/number-ninja'), 2000);
+        console.log('FocusFlight completed. Next game:', nextGame);
+        setTimeout(() => {
+            if (!nextGame || nextGame === 'results') {
+                console.log('Navigating to results');
+                navigate('/results');
+            } else {
+                console.log('Navigating to:', `/play/${nextGame}`);
+                navigate(`/play/${nextGame}`);
+            }
+        }, 2000);
     };
 
     useEffect(() => {

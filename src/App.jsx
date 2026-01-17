@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import GameLayout from './pages/GameLayout';
 import Results from './pages/Results';
 import Questionnaire from './pages/Questionnaire';
+import GameSelection from './pages/GameSelection';
 import { GameProvider } from './context/GameContext';
 
 import TeacherDashboard from './pages/TeacherDashboard';
@@ -21,6 +22,7 @@ function App() {
             <Route path="/deploy/dashboard" element={<Dashboard />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/assessment" element={<Questionnaire />} />
+            <Route path="/game-selection" element={<GameSelection />} />
             <Route path="/play/:gameId" element={<GameLayout />} />
             <Route path="/results" element={<Results />} />
             <Route path="/teacher-login" element={<TeacherDashboard />} />

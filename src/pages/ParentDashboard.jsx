@@ -1,10 +1,87 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Lock, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Lock, ArrowRight, Check, ChevronRight } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { useGame } from '../context/GameContext';
+
+const questions = [
+    {
+        id: 'q1',
+        text: "Does the child often mix up similar-looking letters (like 'b' and 'd') or numbers (like '6' and '9')?",
+        category: 'Reading'
+    },
+    {
+        id: 'q2',
+        text: "Is there difficulty reading analog clocks or estimating how much time has passed?",
+        category: 'Math'
+    },
+    {
+        id: 'q3',
+        text: "Does the child often lose their place while reading or skip lines unintentionally?",
+        category: 'Reading'
+    },
+    {
+        id: 'q4',
+        text: "Is it challenging to do mental math (like calculating change) without using fingers or paper?",
+        category: 'Math'
+    },
+    {
+        id: 'q5',
+        text: "Does the child frequently make careless mistakes in schoolwork or overlook details?",
+        category: 'Focus'
+    },
+    {
+        id: 'q6',
+        text: "Is there difficulty coordinating movements, such as catching a ball or tying shoelaces?",
+        category: 'Coordination'
+    },
+    {
+        id: 'q7',
+        text: "Does the child struggle to follow multi-step oral instructions?",
+        category: 'Listening'
+    },
+    {
+        id: 'q8',
+        text: "Does the child seem easily distracted by extraneous stimuli?",
+        category: 'Focus'
+    }
+];
 
 const ParentDashboard = () => {
     const navigate = useNavigate();
+    const { submitQuestionnaire } = useGame();
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [showQuestionnaire, setShowQuestionnaire] = useState(false);
+    const [answers, setAnswers] = useState({});
+    const [currentStep, setCurrentStep] = useState(0);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleAnswer = (val) => {
+        setAnswers(prev => ({ ...prev, [questions[currentStep].id]: val }));
+        if (currentStep < questions.length - 1) {
+            setCurrentStep(prev => prev + 1);
+        } else {
+            setIsLoading(true);
+            finishAssessment();
+        }
+    };
+
+    const finishAssessment = () => {
+        const analysis = {
+            dyslexiaScore: (answers['q1'] === 'yes' ? 1 : 0) + (answers['q3'] === 'yes' ? 1 : 0),
+            dyscalculiaScore: (answers['q2'] === 'yes' ? 1 : 0) + (answers['q4'] === 'yes' ? 1 : 0),
+            adhdScore: (answers['q5'] === 'yes' ? 1 : 0) + (answers['q8'] === 'yes' ? 1 : 0),
+            dyspraxiaScore: answers['q6'] === 'yes' ? 1 : 0,
+            auditoryScore: answers['q7'] === 'yes' ? 1 : 0
+        };
+        
+        submitQuestionnaire(analysis);
+        setTimeout(() => {
+            setIsLoading(false);
+            setShowQuestionnaire(false);
+            alert('Assessment completed! Child can now proceed with games.');
+        }, 1000);
+    };
 
     if (!isLoggedIn) {
         return (
@@ -30,6 +107,74 @@ const ParentDashboard = () => {
                     </button>
                     <button onClick={() => navigate('/')} className="mt-4 text-gray-500 hover:text-white text-sm">Cancel</button>
                 </div>
+            </div>
+        );
+    }
+
+    if (showQuestionnaire) {
+        const currentQ = questions[currentStep];
+        const progress = ((currentStep + 1) / questions.length) * 100;
+        
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black p-6 flex items-center justify-center">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="max-w-2xl w-full"
+                >
+                    <div className="bg-gray-900/50 backdrop-blur-xl border border-white/10 p-8 rounded-3xl">
+                        <div className="mb-8">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-gray-400 text-sm">Question {currentStep + 1} of {questions.length}</span>
+                                <span className="text-purple-400 font-bold">{currentQ.category}</span>
+                            </div>
+                            <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${progress}%` }}
+                                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
+                                />
+                            </div>
+                        </div>
+
+                        <h2 className="text-2xl md:text-3xl font-bold text-white mb-8">
+                            {currentQ.text}
+                        </h2>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleAnswer('yes')}
+                                disabled={isLoading}
+                                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white py-6 rounded-2xl font-bold text-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                            >
+                                <Check size={24} /> Yes
+                            </motion.button>
+                            
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleAnswer('no')}
+                                disabled={isLoading}
+                                className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 text-white py-6 rounded-2xl font-bold text-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                            >
+                                <ChevronRight size={24} /> No
+                            </motion.button>
+                        </div>
+
+                        <button
+                            onClick={() => {
+                                setShowQuestionnaire(false);
+                                setCurrentStep(0);
+                                setAnswers({});
+                            }}
+                            className="mt-6 text-gray-400 hover:text-white text-sm"
+                        >
+                            Cancel Assessment
+                        </button>
+                    </div>
+                </motion.div>
             </div>
         );
     }
@@ -69,8 +214,11 @@ const ParentDashboard = () => {
                         </div>
                     </div>
 
-                    <button className="w-full mt-8 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2">
-                        View Full Report <ArrowRight size={16} />
+                    <button 
+                        onClick={() => setShowQuestionnaire(true)}
+                        className="w-full mt-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
+                    >
+                        Start Pre-Assessment <ArrowRight size={16} />
                     </button>
                 </div>
 

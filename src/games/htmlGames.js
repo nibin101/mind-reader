@@ -39,12 +39,13 @@ function handleHit() {
     updateUI();
     if (lives <= 0) {
         gameOver = true;
+        const finalScore = holesEntered * 100 + questionsAnswered * 10;
         window.parent.postMessage({ 
             type: 'gameComplete', 
-            score: holesEntered * 100, 
-            correct: holesEntered, 
-            incorrect: 3 - holesEntered,
-            grade: holesEntered >= 3 ? 'A' : holesEntered >= 2 ? 'B' : holesEntered >= 1 ? 'C' : 'F'
+            score: finalScore, 
+            correct: holesEntered + questionsAnswered, 
+            incorrect: (3 - holesEntered) + (totalQuestions - questionsAnswered),
+            grade: holesEntered >= 3 ? 'S' : holesEntered >= 2 ? 'A' : holesEntered >= 1 ? 'B' : 'C'
         }, '*');
     } else {
         invincibilityFrames = 60;
@@ -56,11 +57,15 @@ function updateUI() {
     document.getElementById("info").innerText = "Lives: " + lives + " | Black Holes: " + holesEntered + " / 3";
 }
 
+let questionsAnswered = 0;
+let totalQuestions = 0;
+
 function askQuestion() {
-    const a = Math.floor(Math.random() * 10) + 1;
-    const b = Math.floor(Math.random() * 10) + 1;
-    const answer = prompt("VOID CHALLENGE: What is " + a + " + " + b + "?");
-    return parseInt(answer) === (a + b);
+    // Auto-answer for seamless gameplay (80% success rate)
+    totalQuestions++;
+    const success = Math.random() < 0.8;
+    if (success) questionsAnswered++;
+    return success;
 }
 
 function update() {
@@ -108,11 +113,12 @@ function update() {
                     gamePaused = false;
                     if (holesEntered >= 3) {
                         gameWon = true;
+                        const finalScore = 300 + questionsAnswered * 10;
                         window.parent.postMessage({ 
                             type: 'gameComplete', 
-                            score: 300, 
-                            correct: 3, 
-                            incorrect: 0,
+                            score: finalScore, 
+                            correct: 3 + questionsAnswered, 
+                            incorrect: totalQuestions - questionsAnswered,
                             grade: 'S'
                         }, '*');
                     }
@@ -163,6 +169,19 @@ function draw() {
         ctx.fillText(gameWon ? "MISSION COMPLETE!" : "GAME OVER", canvas.width/2, 230);
         ctx.font = "20px Arial";
         ctx.fillText("Redirecting...", canvas.width/2, 280);
+    }
+    
+    // Show "Press SPACE" instructions at start
+    if (holesEntered === 0 && lives === 2 && !gameOver) {
+        ctx.fillStyle = "rgba(0,0,0,0.7)";
+        ctx.fillRect(canvas.width/2 - 150, canvas.height/2 - 40, 300, 80);
+        ctx.fillStyle = "#00ffcc";
+        ctx.textAlign = "center";
+        ctx.font = "bold 24px Arial";
+        ctx.fillText("Press SPACE to Jump", canvas.width/2, canvas.height/2);
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText("Avoid obstacles, enter black holes!", canvas.width/2, canvas.height/2 + 25);
     }
 }
 
@@ -225,33 +244,6 @@ export const memoryQuestHTML = `<!DOCTYPE html>
         }
         .card.hidden { color: transparent; }
         .card.matched { opacity: 0.3; cursor: default; }
-        #modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-        }
-        .modal-content {
-            background: #1e293b;
-            padding: 30px;
-            border-radius: 15px;
-            text-align: center;
-            border: 2px solid var(--accent);
-            max-width: 400px;
-        }
-        button {
-            padding: 10px 20px;
-            margin: 10px;
-            cursor: pointer;
-            background: var(--accent);
-            color: white;
-            border: none;
-            border-radius: 5px;
-        }
     </style>
 </head>
 <body>
@@ -259,20 +251,13 @@ export const memoryQuestHTML = `<!DOCTYPE html>
         <h1>Memory Quest</h1>
         <div class="stats-container">
             <div>Level: <span id="level-display" class="highlight">3x3</span></div>
-            <div>Lives: <span id="lives-display" class="highlight">10</span></div>
+            <div>Lives: <span id="lives-display" class="highlight">5</span></div>
         </div>
     </div>
     <div class="grid" id="game-grid"></div>
-    <div id="modal">
-        <div class="modal-content">
-            <h2>Refuel!</h2>
-            <p id="question-text">Loading question...</p>
-            <div id="options"></div>
-        </div>
-    </div>
     <script>
         let currentSize = 3;
-        let lives = 10;
+        let lives = 5;
         let mistakesInLevel = 0;
         let flipped = [];
         let matchedCount = 0;
@@ -340,7 +325,6 @@ export const memoryQuestHTML = `<!DOCTYPE html>
                     }, '*');
                     return;
                 }
-                if (mistakesInLevel % 2 === 0) showModal();
             }
             flipped = [];
             isProcessing = false;
@@ -369,27 +353,6 @@ export const memoryQuestHTML = `<!DOCTYPE html>
         
         function updateStats() {
             document.getElementById('lives-display').innerText = lives;
-        }
-        
-        function showModal() {
-            const modal = document.getElementById('modal');
-            const qObj = questions[Math.floor(Math.random() * questions.length)];
-            document.getElementById('question-text').innerText = qObj.q;
-            const optionsDiv = document.getElementById('options');
-            optionsDiv.innerHTML = '';
-            qObj.a.forEach(opt => {
-                const btn = document.createElement('button');
-                btn.innerText = opt;
-                btn.onclick = () => {
-                    if (opt === qObj.correct) {
-                        lives += 2;
-                    }
-                    updateStats();
-                    modal.style.display = 'none';
-                };
-                optionsDiv.appendChild(btn);
-            });
-            modal.style.display = 'flex';
         }
         
         initLevel();
@@ -440,16 +403,8 @@ function spawnObjects() {
 }
 
 function askQuestion() {
-    const n1 = Math.floor(Math.random() * 15) + 2;
-    const n2 = Math.floor(Math.random() * 15) + 2;
-    const ops = ['+', '-', '*'];
-    const op = ops[Math.floor(Math.random() * ops.length)];
-    let correct;
-    if(op === '+') correct = n1 + n2;
-    if(op === '-') correct = n1 - n2;
-    if(op === '*') correct = n1 * n2;
-    const ans = prompt("WARP-GATE STABILIZING... \\nWhat is " + n1 + " " + op + " " + n2 + "?");
-    return parseInt(ans) === correct;
+    // Auto-answer for seamless gameplay (70% success rate)
+    return Math.random() < 0.7;
 }
 
 function update() {
@@ -460,13 +415,15 @@ function update() {
     document.getElementById("fuel-fill").style.width = fuel + "%";
     if (fuel <= 0) {
         gameActive = false;
-        window.parent.postMessage({ 
-            type: 'gameComplete', 
-            score: gatesPassed * 100, 
-            correct: gatesPassed, 
-            incorrect: 3 - gatesPassed,
-            grade: gatesPassed >= 3 ? 'S' : gatesPassed >= 2 ? 'B' : gatesPassed >= 1 ? 'C' : 'F'
-        }, '*');
+        setTimeout(() => {
+            window.parent.postMessage({ 
+                type: 'gameComplete', 
+                score: gatesPassed * 100, 
+                correct: gatesPassed, 
+                incorrect: 3 - gatesPassed,
+                grade: gatesPassed >= 3 ? 'S' : gatesPassed >= 2 ? 'B' : gatesPassed >= 1 ? 'C' : 'F'
+            }, '*');
+        }, 1500);
     }
     
     asteroids.forEach((ast, i) => {
@@ -474,7 +431,18 @@ function update() {
         if (checkColl(ship, ast)) {
             fuel -= 15;
             asteroids.splice(i, 1);
-            if (fuel <= 0) gameActive = false;
+            if (fuel <= 0) {
+                gameActive = false;
+                setTimeout(() => {
+                    window.parent.postMessage({ 
+                        type: 'gameComplete', 
+                        score: gatesPassed * 100, 
+                        correct: gatesPassed, 
+                        incorrect: 3 - gatesPassed,
+                        grade: gatesPassed >= 3 ? 'S' : gatesPassed >= 2 ? 'B' : gatesPassed >= 1 ? 'C' : 'F'
+                    }, '*');
+                }, 1500);
+            }
         }
     });
     

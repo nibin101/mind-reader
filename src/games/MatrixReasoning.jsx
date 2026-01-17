@@ -4,7 +4,7 @@ import { useGame } from '../context/GameContext';
 import { analyzePerformance } from '../engine/GameEngine';
 import { useNavigate } from 'react-router-dom';
 
-const MatrixReasoning = () => {
+const MatrixReasoning = ({ nextGame }) => {
     const { updateGameResult, userProfile, gameStats } = useGame();
     const navigate = useNavigate();
     const [qIndex, setQIndex] = useState(0);
@@ -83,7 +83,16 @@ const MatrixReasoning = () => {
         updateGameResult('matrixReasoning', analysis);
 
         // Chain to next game
-        setTimeout(() => navigate('/play/spatial-recall'), 2000);
+        console.log('MatrixReasoning completed. Next game:', nextGame);
+        setTimeout(() => {
+            if (!nextGame || nextGame === 'results') {
+                console.log('Navigating to results');
+                navigate('/results');
+            } else {
+                console.log('Navigating to:', `/play/${nextGame}`);
+                navigate(`/play/${nextGame}`);
+            }
+        }, 2000);
     };
 
     return (

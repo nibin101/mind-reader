@@ -15,6 +15,50 @@ const GameLayout = () => {
     const navigate = useNavigate();
     const { emotionData, learningDisabilityRisk } = useGame();
 
+    // Get the assessment game sequence if it exists
+    const getNextGame = () => {
+        const assessmentGames = JSON.parse(sessionStorage.getItem('assessmentGames') || '[]');
+        if (assessmentGames.length > 0) {
+            const currentIndex = assessmentGames.indexOf(gameId);
+            if (currentIndex !== -1 && currentIndex < assessmentGames.length - 1) {
+                return assessmentGames[currentIndex + 1];
+            }
+            // If it's the last game, go to results
+            if (currentIndex === assessmentGames.length - 1) {
+                return 'results';
+            }
+            // If current game is not in the list, go to results
+            if (currentIndex === -1) {
+                return 'results';
+            }
+        }
+        // If no custom sequence, go directly to results after any game
+        return 'results';
+    };
+
+    const nextGame = getNextGame();
+
+    // Check if this game should be played based on selection
+    const assessmentGames = JSON.parse(sessionStorage.getItem('assessmentGames') || '[]');
+    const isGameSelected = assessmentGames.length === 0 || assessmentGames.includes(gameId);
+
+    // If game is not selected, redirect to next game or dashboard
+    React.useEffect(() => {
+        if (!isGameSelected) {
+            const nextGameId = getNextGame();
+            if (nextGameId === 'results') {
+                navigate('/results');
+            } else {
+                navigate(`/play/${nextGameId}`);
+            }
+        }
+    }, [gameId, isGameSelected]);
+
+    // Don't render if game is not selected
+    if (!isGameSelected) {
+        return null;
+    }
+
     const getEmotionColor = (emotion) => {
         const colors = {
             happy: 'text-green-400',
@@ -37,23 +81,23 @@ const GameLayout = () => {
             case 'number-ninja':
                 return <NumberNinja />;
             case 'void-challenge':
-                return <HTMLGameWrapper gameId="voidChallenge" htmlContent={voidChallengeHTML} nextGame="memory-quest" />;
+                return <HTMLGameWrapper gameId="voidChallenge" htmlContent={voidChallengeHTML} nextGame={nextGame} />;
             case 'memory-quest':
-                return <HTMLGameWrapper gameId="memoryQuest" htmlContent={memoryQuestHTML} nextGame="warp-explorer" />;
+                return <HTMLGameWrapper gameId="memoryQuest" htmlContent={memoryQuestHTML} nextGame={nextGame} />;
             case 'warp-explorer':
-                return <HTMLGameWrapper gameId="warpExplorer" htmlContent={warpExplorerHTML} nextGame="bridge-game" />;
+                return <HTMLGameWrapper gameId="warpExplorer" htmlContent={warpExplorerHTML} nextGame={nextGame} />;
             case 'bridge-game':
-                return <HTMLGameWrapper gameId="bridgeGame" htmlContent={bridgeGameHTML} nextGame="treasure-hunter" />;
+                return <HTMLGameWrapper gameId="bridgeGame" htmlContent={bridgeGameHTML} nextGame={nextGame} />;
             case 'treasure-hunter':
-                return <HTMLGameWrapper gameId="treasureHunter" htmlContent={treasureHunterHTML} nextGame="defender-challenge" />;
+                return <HTMLGameWrapper gameId="treasureHunter" htmlContent={treasureHunterHTML} nextGame={nextGame} />;
             case 'defender-challenge':
-                return <HTMLGameWrapper gameId="defenderChallenge" htmlContent={defenderChallengeHTML} nextGame="matrix-reasoning" />;
+                return <HTMLGameWrapper gameId="defenderChallenge" htmlContent={defenderChallengeHTML} nextGame={nextGame} />;
             case 'matrix-reasoning':
                 return <MatrixReasoning />;
             case 'spatial-recall':
                 return <SpatialRecall />;
             default:
-                return <div className="text-white">Game Not Found</div>;
+                return <div className="text-white text-center text-2xl mt-20">Game Not Found: {gameId}</div>;
         }
     };
 
