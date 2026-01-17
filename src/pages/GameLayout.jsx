@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import LexicalLegends from '../games/LexicalLegends';
 import FocusFlight from '../games/FocusFlight';
@@ -6,6 +6,7 @@ import NumberNinja from '../games/NumberNinja';
 import MatrixReasoning from '../games/MatrixReasoning';
 import SpatialRecall from '../games/SpatialRecall';
 import HTMLGameWrapper from '../games/HTMLGameWrapper';
+import RealTimeRiskDisplay from '../components/RealTimeRiskDisplay';
 import { voidChallengeHTML, memoryQuestHTML, treasureHunterHTML, defenderChallengeHTML, warpExplorerHTML, bridgeGameHTML } from '../games/htmlGames';
 import { ArrowLeft, Eye } from 'lucide-react';
 import { useGame } from '../context/GameContext';
@@ -14,6 +15,37 @@ const GameLayout = () => {
     const { gameId } = useParams();
     const navigate = useNavigate();
     const { emotionData, learningDisabilityRisk } = useGame();
+    const [lastRiskChange, setLastRiskChange] = useState(null);
+    const [prevRisks, setPrevRisks] = useState(learningDisabilityRisk);
+
+    // Track risk changes
+    useEffect(() => {
+        // Detect which risk changed
+        const changes = [];
+        Object.keys(learningDisabilityRisk).forEach(key => {
+            if (key !== 'overall' && learningDisabilityRisk[key] !== prevRisks[key]) {
+                changes.push({
+                    type: key,
+                    delta: Math.round((learningDisabilityRisk[key] - prevRisks[key]) * 10) / 10
+                });
+            }
+        });
+
+        if (changes.length > 0) {
+            // Show the most significant change
+            const significantChange = changes.reduce((max, change) => 
+                Math.abs(change.delta) > Math.abs(max.delta) ? change : max
+            );
+            setLastRiskChange(significantChange);
+
+            // Clear after 3 seconds
+            const timer = setTimeout(() => setLastRiskChange(null), 3000);
+            
+            setPrevRisks(learningDisabilityRisk);
+            
+            return () => clearTimeout(timer);
+        }
+    }, [learningDisabilityRisk]);
 
     // Get the assessment game sequence if it exists
     const getNextGame = () => {
@@ -103,6 +135,9 @@ const GameLayout = () => {
 
     return (
         <div className="min-h-screen bg-black flex flex-col relative">
+            {/* Real-Time Risk Display */}
+            <RealTimeRiskDisplay risks={learningDisabilityRisk} lastChange={lastRiskChange} />
+            
             <div className="p-4">
                 <button
                     onClick={() => navigate('/dashboard')}

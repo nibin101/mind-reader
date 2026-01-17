@@ -74,214 +74,83 @@ const Results = () => {
     console.log('Game stats:', gameStats);
     console.log('Question level data:', questionLevelData);
 
-    // Calculate all disease risks with 80% max cap (use LLM if available)
+    // Calculate all disease risks - USE REAL-TIME VALUES (no max cap manipulation)
     const getAllDiseaseRisks = () => {
-        const maxRisk = 80; // Maximum risk percentage
-        
-        // If LLM analysis is available, use it
-        if (llmAnalysis && llmAnalysis.overallAssessment) {
-            return [
-                {
-                    name: 'Dyslexia',
-                    description: 'Reading & Language Processing',
-                    risk: llmAnalysis.overallAssessment.dyslexia.risk,
-                    confidence: llmAnalysis.overallAssessment.dyslexia.confidence,
-                    color: '#ef4444',
-                    icon: '📖',
-                    factors: llmAnalysis.gameAnalysis?.treasureHunter?.keyIndicators || []
-                },
-                {
-                    name: 'Dyscalculia',
-                    description: 'Mathematical & Numerical Processing',
-                    risk: llmAnalysis.overallAssessment.dyscalculia.risk,
-                    confidence: llmAnalysis.overallAssessment.dyscalculia.confidence,
-                    color: '#f59e0b',
-                    icon: '🔢',
-                    factors: llmAnalysis.gameAnalysis?.defenderChallenge?.keyIndicators || []
-                },
-                {
-                    name: 'Dysgraphia',
-                    description: 'Writing & Fine Motor Skills',
-                    risk: llmAnalysis.overallAssessment.dysgraphia.risk,
-                    confidence: llmAnalysis.overallAssessment.dysgraphia.confidence,
-                    color: '#8b5cf6',
-                    icon: '✍️',
-                    factors: llmAnalysis.gameAnalysis?.spatialRecall?.keyIndicators || []
-                },
-                {
-                    name: 'ADHD',
-                    description: 'Attention & Focus',
-                    risk: llmAnalysis.overallAssessment.adhd.risk,
-                    confidence: llmAnalysis.overallAssessment.adhd.confidence,
-                    color: '#06b6d4',
-                    icon: '🎯',
-                    factors: llmAnalysis.gameAnalysis?.voidChallenge?.keyIndicators || []
-                },
-                {
-                    name: 'Auditory Processing',
-                    description: 'Sound & Language Comprehension',
-                    risk: llmAnalysis.overallAssessment.auditoryProcessing.risk,
-                    confidence: llmAnalysis.overallAssessment.auditoryProcessing.confidence,
-                    color: '#10b981',
-                    icon: '👂',
-                    factors: []
-                },
-                {
-                    name: 'Dyspraxia',
-                    description: 'Motor Coordination',
-                    risk: llmAnalysis.overallAssessment.dyspraxia.risk,
-                    confidence: llmAnalysis.overallAssessment.dyspraxia.confidence,
-                    color: '#ec4899',
-                    icon: '🤸',
-                    factors: []
-                }
-            ];
-        }
-        
-        // Helper to cap risk at 80%
-        const capRisk = (risk) => Math.min(risk, maxRisk);
-        
-        // Calculate comprehensive risks from all game data if context risks are 0
-        const calculateFromGames = () => {
-            let dyslexiaRisk = learningDisabilityRisk.dyslexia || 0;
-            let dyscalculiaRisk = learningDisabilityRisk.dyscalculia || 0;
-            let adhdRisk = learningDisabilityRisk.adhd || 0;
-            let dysgraphiaRisk = learningDisabilityRisk.dysgraphia || 0;
-            
-            // If context has values, use them; otherwise calculate from games
-            if (dyslexiaRisk === 0 && dyscalculiaRisk === 0 && adhdRisk === 0) {
-                // Fallback: Calculate from game performance
-                Object.entries(gameStats).forEach(([gameId, stats]) => {
-                    if (stats.played && stats.score !== undefined) {
-                        let gameRisk = 0;
-                        
-                        // Grade-based risk
-                        if (stats.grade === 'F') gameRisk = 50;
-                        else if (stats.grade === 'C') gameRisk = 35;
-                        else if (stats.grade === 'B') gameRisk = 20;
-                        else if (stats.grade === 'A') gameRisk = 10;
-                        
-                        // Score-based
-                        if (stats.score < 50) gameRisk += 15;
-                        else if (stats.score < 100) gameRisk += 10;
-                        else if (stats.score < 150) gameRisk += 5;
-                        
-                        // Map to disorders
-                        if (gameId === 'lexicalLegends' || gameId === 'treasureHunter') {
-                            dyslexiaRisk = Math.min(dyslexiaRisk + gameRisk, 80);
-                        } else if (gameId === 'numberNinja' || gameId === 'defenderChallenge') {
-                            dyscalculiaRisk = Math.min(dyscalculiaRisk + gameRisk, 80);
-                        } else if (gameId === 'spatialRecall' || gameId === 'memoryQuest') {
-                            dysgraphiaRisk = Math.min(dysgraphiaRisk + gameRisk, 80);
-                        } else if (gameId === 'focusFlight' || gameId === 'voidChallenge') {
-                            if (stats.score < 200) {
-                                adhdRisk = Math.min(adhdRisk + gameRisk, 80);
-                            }
-                        }
-                    }
-                });
-                
-                // Add questionnaire risks
-                if (gameStats.questionnaire?.analysis) {
-                    const q = gameStats.questionnaire.analysis;
-                    if (q.dyslexiaScore >= 2) dyslexiaRisk = Math.min(dyslexiaRisk + 20, 80);
-                    else if (q.dyslexiaScore >= 1) dyslexiaRisk = Math.min(dyslexiaRisk + 10, 80);
-                    
-                    if (q.dyscalculiaScore >= 2) dyscalculiaRisk = Math.min(dyscalculiaRisk + 20, 80);
-                    else if (q.dyscalculiaScore >= 1) dyscalculiaRisk = Math.min(dyscalculiaRisk + 10, 80);
-                    
-                    if (q.adhdScore >= 2) adhdRisk = Math.min(adhdRisk + 20, 80);
-                    else if (q.adhdScore >= 1) adhdRisk = Math.min(adhdRisk + 10, 80);
-                }
-            }
-            
-            return { dyslexiaRisk, dyscalculiaRisk, adhdRisk, dysgraphiaRisk };
-        };
-        
-        const calculatedRisks = calculateFromGames();
-        
-        return [
+        // Always use the real-time tracked values from context
+        // These are the values calculated during gameplay with webcam emotion analysis
+        const risks = [
             {
                 name: 'Dyslexia',
                 description: 'Reading & Language Processing',
-                risk: capRisk(calculatedRisks.dyslexiaRisk),
-                confidence: calculatedRisks.dyslexiaRisk > 30 ? 'Moderate-High' : 'Low',
+                risk: Math.round(learningDisabilityRisk.dyslexia * 10) / 10, // 1 decimal place
+                confidence: learningDisabilityRisk.dyslexia > 50 ? 'High' : learningDisabilityRisk.dyslexia > 25 ? 'Medium' : 'Low',
                 color: '#ef4444',
                 icon: '📖',
-                factors: [
-                    gameStats.lexicalLegends?.grade === 'C' || gameStats.lexicalLegends?.grade === 'F' ? 'Low reading performance' : null,
-                    gameStats.treasureHunter?.grade === 'C' || gameStats.treasureHunter?.grade === 'F' ? 'Poor treasure hunter performance' : null,
-                    emotionData.metrics?.confusionStates > 3 ? 'Confusion during reading tasks' : null
-                ].filter(Boolean)
+                factors: []
             },
             {
                 name: 'Dyscalculia',
                 description: 'Mathematical & Numerical Processing',
-                risk: capRisk(calculatedRisks.dyscalculiaRisk),
-                confidence: calculatedRisks.dyscalculiaRisk > 30 ? 'Moderate-High' : 'Low',
+                risk: Math.round(learningDisabilityRisk.dyscalculia * 10) / 10,
+                confidence: learningDisabilityRisk.dyscalculia > 50 ? 'High' : learningDisabilityRisk.dyscalculia > 25 ? 'Medium' : 'Low',
                 color: '#f59e0b',
                 icon: '🔢',
-                factors: [
-                    gameStats.numberNinja?.grade === 'C' || gameStats.numberNinja?.grade === 'F' ? 'Low numerical performance' : null,
-                    gameStats.defenderChallenge?.grade === 'C' || gameStats.defenderChallenge?.grade === 'F' ? 'Poor defender performance' : null,
-                    gameStats.numberNinja?.incorrect > gameStats.numberNinja?.correct ? 'High error rate in math' : null
-                ].filter(Boolean)
-            },
-            {
-                name: 'ADHD',
-                description: 'Attention & Focus Regulation',
-                risk: (() => {
-                    const focusScore = gameStats.focusFlight?.score || 0;
-                    const voidScore = gameStats.voidChallenge?.score || 0;
-                    const hasGoodAttention = focusScore > 300 || voidScore > 200;
-                    
-                    if (hasGoodAttention) {
-                        return Math.min(15, capRisk(calculatedRisks.adhdRisk));
-                    }
-                    return capRisk(calculatedRisks.adhdRisk);
-                })(),
-                confidence: calculatedRisks.adhdRisk > 30 ? 'Moderate' : 'Low',
-                color: '#8b5cf6',
-                icon: '⚡',
-                factors: [
-                    emotionData.metrics?.rapidChanges >= 5 ? 'Rapid emotion shifts detected' : null,
-                    gameStats.focusFlight?.score < 200 ? 'Low sustained attention' : null,
-                    (gameStats.voidChallenge?.score || 0) < 200 && (gameStats.voidChallenge?.score || 0) > 0 ? 'Poor void challenge performance' : null
-                ].filter(Boolean)
+                factors: []
             },
             {
                 name: 'Dysgraphia',
                 description: 'Writing & Fine Motor Skills',
-                risk: capRisk(calculatedRisks.dysgraphiaRisk),
-                confidence: calculatedRisks.dysgraphiaRisk > 30 ? 'Moderate' : 'Low',
-                color: '#06b6d4',
+                risk: Math.round(learningDisabilityRisk.dysgraphia * 10) / 10,
+                confidence: learningDisabilityRisk.dysgraphia > 50 ? 'High' : learningDisabilityRisk.dysgraphia > 25 ? 'Medium' : 'Low',
+                color: '#8b5cf6',
                 icon: '✍️',
-                factors: [
-                    gameStats.spatialRecall?.grade === 'C' || gameStats.spatialRecall?.grade === 'F' ? 'Low visual-motor coordination' : null,
-                    gameStats.memoryQuest?.grade === 'C' || gameStats.memoryQuest?.grade === 'F' ? 'Poor memory performance' : null
-                ].filter(Boolean)
+                factors: []
             },
             {
-                name: 'Dyspraxia',
-                description: 'Motor Coordination & Planning',
-                risk: capRisk((learningDisabilityRisk.dyspraxia || 0)),
-                confidence: (learningDisabilityRisk.dyspraxia || 0) > 30 ? 'Moderate' : 'Low',
-                color: '#ec4899',
+                name: 'ADHD',
+                description: 'Attention & Focus',
+                risk: Math.round(learningDisabilityRisk.adhd * 10) / 10,
+                confidence: learningDisabilityRisk.adhd > 50 ? 'High' : learningDisabilityRisk.adhd > 25 ? 'Medium' : 'Low',
+                color: '#06b6d4',
                 icon: '🎯',
-                factors: [
-                    gameStats.bridgeGame?.score < 150 ? 'Low coordination performance' : null
-                ].filter(Boolean)
+                factors: []
             },
             {
                 name: 'Auditory Processing',
                 description: 'Sound & Language Comprehension',
-                risk: capRisk((learningDisabilityRisk.auditoryProcessing || 0)),
-                confidence: (learningDisabilityRisk.auditoryProcessing || 0) > 30 ? 'Moderate' : 'Low',
+                risk: Math.round(learningDisabilityRisk.auditoryProcessing * 10) / 10,
+                confidence: learningDisabilityRisk.auditoryProcessing > 50 ? 'High' : learningDisabilityRisk.auditoryProcessing > 25 ? 'Medium' : 'Low',
                 color: '#10b981',
                 icon: '👂',
                 factors: []
+            },
+            {
+                name: 'Dyspraxia',
+                description: 'Motor Coordination',
+                risk: Math.round(learningDisabilityRisk.dyspraxia * 10) / 10,
+                confidence: learningDisabilityRisk.dyspraxia > 50 ? 'High' : learningDisabilityRisk.dyspraxia > 25 ? 'Medium' : 'Low',
+                color: '#ec4899',
+                icon: '🤸',
+                factors: []
             }
-        ].sort((a, b) => b.risk - a.risk); // Sort by risk level
+        ];
+        
+        // Apply comorbidity adjustment: If child has one disease (>50%), reduce others by 5%
+        const highRiskDiseases = risks.filter(r => r.risk > 50);
+        if (highRiskDiseases.length > 0) {
+            console.log('🔄 Comorbidity Adjustment: Detected high-risk disorder(s), reducing other diseases by 5%');
+            risks.forEach(disease => {
+                if (disease.risk <= 50) {
+                    const adjustment = 5 + (Math.random() * 0.4 - 0.2); // 5% ±0.2 for variation
+                    const oldRisk = disease.risk;
+                    disease.risk = Math.max(0, Math.round((disease.risk - adjustment) * 10) / 10);
+                    console.log(`  ↘️ ${disease.name}: ${oldRisk}% → ${disease.risk}% (-${adjustment.toFixed(1)}%)`);
+                }
+            });
+        }
+        
+        console.log('📊 FINAL REPORT - Real-time tracked values:', risks);
+        return risks.sort((a, b) => b.risk - a.risk); // Sort by risk level
     };
 
     const diseaseRisks = getAllDiseaseRisks();

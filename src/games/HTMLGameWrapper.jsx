@@ -7,7 +7,7 @@ import { generateDiseaseQuestions } from '../services/openai';
 const HTMLGameWrapper = ({ gameId, htmlContent, nextGame }) => {
     const iframeRef = useRef(null);
     const navigate = useNavigate();
-    const { updateGameResult, recordGameAttempt, userProfile } = useGame();
+    const { updateGameResult, recordGameAttempt, userProfile, setGameContext } = useGame();
     const [showFailQuestions, setShowFailQuestions] = useState(false);
     const [questions, setQuestions] = useState([]);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -17,6 +17,8 @@ const HTMLGameWrapper = ({ gameId, htmlContent, nextGame }) => {
     const [loadingQuestions, setLoadingQuestions] = useState(false);
     const [currentDifficulty, setCurrentDifficulty] = useState(3); // Start at level 3 (student's expected level)
     const [performanceHistory, setPerformanceHistory] = useState([]); // Track right/wrong answers
+    const [consecutiveWrong, setConsecutiveWrong] = useState(0); // Track consecutive wrong answers for ADHD detection
+    const [gameStartTime, setGameStartTime] = useState(null); // Track time spent in game
 
     // Reset all question states when gameId changes
     useEffect(() => {
@@ -26,7 +28,18 @@ const HTMLGameWrapper = ({ gameId, htmlContent, nextGame }) => {
         setSelectedAnswer(null);
         setGameFailed(false);
         setGameScore(0);
-    }, [gameId]);
+        setConsecutiveWrong(0);
+        setGameStartTime(Date.now()); // Track when game starts
+        console.log('🎮 Game started:', gameId);
+        
+        // Set context: in game (emotion shifts tracked)
+        setGameContext({ inGame: true, questionDifficulty: null });
+        
+        return () => {
+            // Clean up: leaving game
+            setGameContext({ inGame: false, questionDifficulty: null });
+        };
+    }, [gameId, setGameContext]);
 
     // Map game IDs to disease types for question generation
     const getDiseaseTypeForGame = (gameType) => {
@@ -160,19 +173,19 @@ const HTMLGameWrapper = ({ gameId, htmlContent, nextGame }) => {
                 type: 'reading',
                 instruction: 'Phonological Manipulation',
                 question: 'Remove the "str" sound from "STRAP". What word is left?',
-                options: ['Trap', 'Tap', 'Rap', 'Sap'],
-                answer: 'Tap',
+                options: ['Trap', 'Tap', 'Rap', 'Ap'],
+                answer: 'Ap',
                 taskType: 'phonology',
                 difficulty: 3,
                 startTime: Date.now()
             },
             {
                 type: 'reading',
-                instruction: 'Complex Word Recognition',
-                question: 'Which is spelled correctly for age 13?',
-                options: ['Rhythm', 'Rythm', 'Rhythem', 'Rithm'],
-                answer: 'Rhythm',
-                taskType: 'advanced_spelling',
+                instruction: 'Phonological Blending',
+                question: 'What word do you get when you blend these sounds: /s/ /t/ /r/ /e/ /t/ /ch/?',
+                options: ['Scratch', 'Stretch', 'Street', 'Strength'],
+                answer: 'Stretch',
+                taskType: 'phonology',
                 difficulty: 3,
                 startTime: Date.now()
             },
@@ -418,6 +431,21 @@ const HTMLGameWrapper = ({ gameId, htmlContent, nextGame }) => {
         
         console.log(`📝 Question ${currentQuestionIndex + 1}/${questions.length}: ${isCorrect ? '✅ CORRECT' : '❌ WRONG'} | Level ${currentDifficulty} | Time: ${timeSpent.toFixed(1)}s`);
         
+        // Track consecutive wrong answers for ADHD detection
+        if (!isCorrect) {
+            const newConsecutiveWrong = consecutiveWrong + 1;
+            setConsecutiveWrong(newConsecutiveWrong);
+            
+            if (newConsecutiveWrong >= 3) {
+                console.log('🚨 ADHD ALERT: 3+ consecutive wrong answers - concentration issue detected!');
+                // Add ADHD risk for inability to concentrate on questions with emotion context
+                const emotionContext = question.type === 'reading' ? 0.3 : 0.2;
+                recordGameAttempt(gameId, 'attention', 1, false, timeSpent + emotionContext); // Level 1 for critical ADHD indicator
+            }
+        } else {
+            setConsecutiveWrong(0); // Reset on correct answer
+        }
+        
         // ============================================
         // ADAPTIVE DIFFICULTY LOGIC
         // ============================================
@@ -642,6 +670,13 @@ const HTMLGameWrapper = ({ gameId, htmlContent, nextGame }) => {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         className="fixed inset-0 bg-black/95 flex items-center justify-center z-50"
+                        onAnimationStart={() => {
+                            // When question modal appears, update context with current difficulty
+                            if (questions[currentQuestionIndex]) {
+                                setGameContext({ inGame: false, questionDifficulty: currentDifficulty });
+                                console.log(`📝 Entering question mode - Level ${currentDifficulty} (emotion shift tracking: ${currentDifficulty <= 2 ? 'ENABLED' : 'DISABLED'})`);
+                            }
+                        }}
                     >
                         <motion.div
                             initial={{ scale: 0.8, y: 50 }}
@@ -710,6 +745,12 @@ const HTMLGameWrapper = ({ gameId, htmlContent, nextGame }) => {
                     </motion.div>
                 )}
             </AnimatePresence>
+            
+            {/* Update context when returning to gameplay */}
+            {!showFailQuestions && (() => {
+                setGameContext({ inGame: true, questionDifficulty: null });
+                return null;
+            })()}
         </div>
     );
 };
