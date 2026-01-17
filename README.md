@@ -1,17 +1,123 @@
-# React + Vite
+# MindReader - Cognitive Assessment Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A web-based cognitive assessment platform featuring interactive games and real-time emotion detection to evaluate mental health and cognitive abilities.
 
-Currently, two official plugins are available:
+![Home Page](./screenshots/homepage.png)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## 🚀 Quick Start
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+See [QUICK_START.md](./QUICK_START.md) for installation and setup instructions.
 
-## Expanding the ESLint configuration
+**TL;DR**: Run `npm install` then `npm run dev` and open `http://localhost:5173`
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-# Mind-Reader-App
+---
+
+## 📁 Project Structure
+
+```
+mindreader/
+├── src/
+│   ├── components/     # Reusable UI components
+│   ├── pages/          # Main application pages
+│   ├── games/          # Interactive cognitive games
+│   ├── services/       # AI and emotion detection services
+│   ├── context/        # React context providers
+│   └── utils/          # Helper functions
+├── public/             # Static files and standalone HTML games
+└── screenshots/        # Application screenshots
+```
+
+---
+
+## 📱 Application Flow
+
+### 1. Home Page
+The landing page with an overview of the platform and getting started options.
+
+![Home Page](./screenshots/homepage.png)
+
+---
+
+### 2. Profile Setup
+Create your profile by entering basic information before starting the assessment.
+
+![Profile Setup](./screenshots/profile.png)
+
+---
+
+### 3. Questionnaire
+Answer preliminary questions to help tailor the cognitive assessment.
+
+![Questionnaire](./screenshots/quiz-question.png)
+
+---
+
+### 4. Game Selection
+Choose from various cognitive games designed to assess different mental abilities.
+
+![Game Selection](./screenshots/game-section.png)
+
+---
+
+### 5. Interactive Games
+
+#### Focus Flight
+Test your focus and reaction time with this attention-based game.
+
+![Focus Flight](./screenshots/fous-flight.png)
+
+---
+
+#### Memory Quest
+Assess your spatial memory and visualization capabilities.
+
+![Memory Quest](./screenshots/memory-quest.png)
+
+---
+
+#### Void Challenge
+Test your problem-solving abilities in challenging scenarios.
+
+![Void Challenge](./screenshots/void-challenge.png)
+
+---
+
+### 6. Results & Dashboard
+View comprehensive results, scores, and cognitive assessment reports.
+
+![Results Dashboard](./screenshots/results.png)
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend**: React + Vite
+- **Styling**: Tailwind CSS
+- **AI/ML**: OpenAI API, Custom Emotion Detection
+- **Charts**: Recharts
+
+---
+
+## 🎮 Available Games
+
+1. **Focus Flight** - Attention and focus assessment
+2. **Memory Quest** - Spatial memory and recall
+3. **Void Challenge** - Problem-solving and logic
+4. **Matrix Reasoning** - Pattern recognition
+5. **Number Ninja** - Numerical reasoning
+6. **Lexical Legends** - Language skills
+
+---
+
+## 📚 Documentation
+
+- [Quick Start Guide](./QUICK_START.md) - Installation and setup
+- [Architecture](./ARCHITECTURE.md) - Technical architecture
+- [Privacy Policy](./README_PRIVACY.md) - Data handling and privacy
+- [Games Integration](./GAMES_INTEGRATION.md) - Game development guide
+
+---
+
+**IHRD Hackathon Project**
