@@ -745,12 +745,6 @@ const HTMLGameWrapper = ({ gameId, htmlContent, nextGame }) => {
                     </motion.div>
                 )}
             </AnimatePresence>
-            
-            {/* Update context when returning to gameplay */}
-            {!showFailQuestions && (() => {
-                setGameContext({ inGame: true, questionDifficulty: null });
-                return null;
-            })()}
         </div>
     );
 };

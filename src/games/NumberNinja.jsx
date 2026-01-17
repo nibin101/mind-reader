@@ -32,21 +32,77 @@ const NumberNinja = () => {
     }, [userProfile.name]);
 
     const generateProblem = () => {
-        const op = Math.random() > 0.5 ? '+' : '-';
-        const range = difficulty === 1 ? 10 : difficulty === 2 ? 20 : 50;
-        const a = Math.floor(Math.random() * range) + 1;
-        const b = Math.floor(Math.random() * range) + 1;
-        let ans = op === '+' ? a + b : a - b;
-
-        let eq = `${a} ${op} ${b}`;
-        if (ans < 0) {
-            ans = b - a;
-            eq = `${b} ${op} ${a}`;
+        let op, a, b, ans, eq;
+        
+        if (difficulty === 1) {
+            // Easy: Simple multiplication and small division
+            op = Math.random() > 0.5 ? '×' : '÷';
+            if (op === '×') {
+                a = Math.floor(Math.random() * 8) + 2; // 2-9
+                b = Math.floor(Math.random() * 8) + 2;
+                ans = a * b;
+                eq = `${a} ${op} ${b}`;
+            } else {
+                b = Math.floor(Math.random() * 8) + 2; // 2-9
+                ans = Math.floor(Math.random() * 8) + 2;
+                a = b * ans; // Ensure clean division
+                eq = `${a} ${op} ${b}`;
+            }
+        } else if (difficulty === 2) {
+            // Medium: Larger multiplication, mixed operations
+            const ops = ['×', '÷', '+', '-'];
+            op = ops[Math.floor(Math.random() * ops.length)];
+            if (op === '×') {
+                a = Math.floor(Math.random() * 12) + 5; // 5-16
+                b = Math.floor(Math.random() * 8) + 2;
+                ans = a * b;
+                eq = `${a} ${op} ${b}`;
+            } else if (op === '÷') {
+                b = Math.floor(Math.random() * 8) + 3;
+                ans = Math.floor(Math.random() * 12) + 2;
+                a = b * ans;
+                eq = `${a} ${op} ${b}`;
+            } else if (op === '+') {
+                a = Math.floor(Math.random() * 30) + 10;
+                b = Math.floor(Math.random() * 30) + 10;
+                ans = a + b;
+                eq = `${a} ${op} ${b}`;
+            } else {
+                a = Math.floor(Math.random() * 40) + 20;
+                b = Math.floor(Math.random() * 15) + 5;
+                ans = a - b;
+                eq = `${a} ${op} ${b}`;
+            }
+        } else {
+            // Hard: Complex operations, larger numbers
+            op = Math.random() > 0.6 ? '×' : (Math.random() > 0.5 ? '÷' : (Math.random() > 0.5 ? '+' : '-'));
+            if (op === '×') {
+                a = Math.floor(Math.random() * 15) + 10; // 10-24
+                b = Math.floor(Math.random() * 12) + 3;
+                ans = a * b;
+                eq = `${a} ${op} ${b}`;
+            } else if (op === '÷') {
+                b = Math.floor(Math.random() * 12) + 4;
+                ans = Math.floor(Math.random() * 20) + 5;
+                a = b * ans;
+                eq = `${a} ${op} ${b}`;
+            } else if (op === '+') {
+                a = Math.floor(Math.random() * 50) + 30;
+                b = Math.floor(Math.random() * 50) + 30;
+                ans = a + b;
+                eq = `${a} ${op} ${b}`;
+            } else {
+                a = Math.floor(Math.random() * 80) + 40;
+                b = Math.floor(Math.random() * 30) + 10;
+                ans = a - b;
+                eq = `${a} ${op} ${b}`;
+            }
         }
 
         const options = [ans];
+        const spread = Math.max(5, Math.floor(ans * 0.3)); // 30% spread or min 5
         while (options.length < 3) {
-            const wrong = ans + Math.floor(Math.random() * 5) - 2;
+            const wrong = ans + Math.floor(Math.random() * spread * 2) - spread;
             if (wrong !== ans && wrong >= 0 && !options.includes(wrong)) {
                 options.push(wrong);
             }

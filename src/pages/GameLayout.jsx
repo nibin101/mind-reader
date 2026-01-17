@@ -45,7 +45,7 @@ const GameLayout = () => {
             
             return () => clearTimeout(timer);
         }
-    }, [learningDisabilityRisk]);
+    }, [learningDisabilityRisk, prevRisks]);
 
     // Get the assessment game sequence if it exists
     const getNextGame = () => {
@@ -135,8 +135,10 @@ const GameLayout = () => {
 
     return (
         <div className="min-h-screen bg-black flex flex-col relative">
-            {/* Real-Time Risk Display */}
-            <RealTimeRiskDisplay risks={learningDisabilityRisk} lastChange={lastRiskChange} />
+            {/* Real-Time Risk Display - Hidden from user, running in background */}
+            <div style={{ display: 'none' }}>
+                <RealTimeRiskDisplay risks={learningDisabilityRisk} lastChange={lastRiskChange} />
+            </div>
             
             <div className="p-4">
                 <button

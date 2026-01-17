@@ -76,6 +76,14 @@ const Results = () => {
 
     // Calculate all disease risks - USE REAL-TIME VALUES (no max cap manipulation)
     const getAllDiseaseRisks = () => {
+        // Helper function to get color based on risk level
+        const getRiskColor = (risk) => {
+            if (risk >= 70) return '#ef4444'; // Red for high risk (70-80%+)
+            if (risk >= 50) return '#f97316'; // Orange for moderate-high risk
+            if (risk >= 30) return '#eab308'; // Yellow for moderate risk
+            return '#3b82f6'; // Blue for low risk
+        };
+        
         // Always use the real-time tracked values from context
         // These are the values calculated during gameplay with webcam emotion analysis
         const risks = [
@@ -83,8 +91,8 @@ const Results = () => {
                 name: 'Dyslexia',
                 description: 'Reading & Language Processing',
                 risk: Math.round(learningDisabilityRisk.dyslexia * 10) / 10, // 1 decimal place
-                confidence: learningDisabilityRisk.dyslexia > 50 ? 'High' : learningDisabilityRisk.dyslexia > 25 ? 'Medium' : 'Low',
-                color: '#ef4444',
+                confidence: learningDisabilityRisk.dyslexia >= 70 ? 'High' : learningDisabilityRisk.dyslexia >= 50 ? 'Moderate-High' : learningDisabilityRisk.dyslexia >= 30 ? 'Moderate' : 'Low',
+                color: getRiskColor(learningDisabilityRisk.dyslexia),
                 icon: '📖',
                 factors: []
             },
@@ -92,8 +100,8 @@ const Results = () => {
                 name: 'Dyscalculia',
                 description: 'Mathematical & Numerical Processing',
                 risk: Math.round(learningDisabilityRisk.dyscalculia * 10) / 10,
-                confidence: learningDisabilityRisk.dyscalculia > 50 ? 'High' : learningDisabilityRisk.dyscalculia > 25 ? 'Medium' : 'Low',
-                color: '#f59e0b',
+                confidence: learningDisabilityRisk.dyscalculia >= 70 ? 'High' : learningDisabilityRisk.dyscalculia >= 50 ? 'Moderate-High' : learningDisabilityRisk.dyscalculia >= 30 ? 'Moderate' : 'Low',
+                color: getRiskColor(learningDisabilityRisk.dyscalculia),
                 icon: '🔢',
                 factors: []
             },
@@ -101,8 +109,8 @@ const Results = () => {
                 name: 'Dysgraphia',
                 description: 'Writing & Fine Motor Skills',
                 risk: Math.round(learningDisabilityRisk.dysgraphia * 10) / 10,
-                confidence: learningDisabilityRisk.dysgraphia > 50 ? 'High' : learningDisabilityRisk.dysgraphia > 25 ? 'Medium' : 'Low',
-                color: '#8b5cf6',
+                confidence: learningDisabilityRisk.dysgraphia >= 70 ? 'High' : learningDisabilityRisk.dysgraphia >= 50 ? 'Moderate-High' : learningDisabilityRisk.dysgraphia >= 30 ? 'Moderate' : 'Low',
+                color: getRiskColor(learningDisabilityRisk.dysgraphia),
                 icon: '✍️',
                 factors: []
             },
@@ -110,8 +118,8 @@ const Results = () => {
                 name: 'ADHD',
                 description: 'Attention & Focus',
                 risk: Math.round(learningDisabilityRisk.adhd * 10) / 10,
-                confidence: learningDisabilityRisk.adhd > 50 ? 'High' : learningDisabilityRisk.adhd > 25 ? 'Medium' : 'Low',
-                color: '#06b6d4',
+                confidence: learningDisabilityRisk.adhd >= 70 ? 'High' : learningDisabilityRisk.adhd >= 50 ? 'Moderate-High' : learningDisabilityRisk.adhd >= 30 ? 'Moderate' : 'Low',
+                color: getRiskColor(learningDisabilityRisk.adhd),
                 icon: '🎯',
                 factors: []
             },
@@ -119,8 +127,8 @@ const Results = () => {
                 name: 'Auditory Processing',
                 description: 'Sound & Language Comprehension',
                 risk: Math.round(learningDisabilityRisk.auditoryProcessing * 10) / 10,
-                confidence: learningDisabilityRisk.auditoryProcessing > 50 ? 'High' : learningDisabilityRisk.auditoryProcessing > 25 ? 'Medium' : 'Low',
-                color: '#10b981',
+                confidence: learningDisabilityRisk.auditoryProcessing >= 70 ? 'High' : learningDisabilityRisk.auditoryProcessing >= 50 ? 'Moderate-High' : learningDisabilityRisk.auditoryProcessing >= 30 ? 'Moderate' : 'Low',
+                color: getRiskColor(learningDisabilityRisk.auditoryProcessing),
                 icon: '👂',
                 factors: []
             },
@@ -128,8 +136,8 @@ const Results = () => {
                 name: 'Dyspraxia',
                 description: 'Motor Coordination',
                 risk: Math.round(learningDisabilityRisk.dyspraxia * 10) / 10,
-                confidence: learningDisabilityRisk.dyspraxia > 50 ? 'High' : learningDisabilityRisk.dyspraxia > 25 ? 'Medium' : 'Low',
-                color: '#ec4899',
+                confidence: learningDisabilityRisk.dyspraxia >= 70 ? 'High' : learningDisabilityRisk.dyspraxia >= 50 ? 'Moderate-High' : learningDisabilityRisk.dyspraxia >= 30 ? 'Moderate' : 'Low',
+                color: getRiskColor(learningDisabilityRisk.dyspraxia),
                 icon: '🤸',
                 factors: []
             }
@@ -199,9 +207,9 @@ const Results = () => {
         },
         {
             label: 'Risk Level',
-            value: highestRisk > 50 ? 'High' : highestRisk > 30 ? 'Moderate' : 'Low',
-            icon: <Target className="text-red-400" />,
-            color: 'red'
+            value: highestRisk >= 70 ? 'High' : highestRisk >= 50 ? 'Moderate-High' : highestRisk >= 30 ? 'Moderate' : 'Low',
+            icon: <Target className={highestRisk >= 70 ? "text-red-400" : highestRisk >= 50 ? "text-orange-400" : highestRisk >= 30 ? "text-yellow-400" : "text-blue-400"} />,
+            color: highestRisk >= 70 ? 'red' : highestRisk >= 50 ? 'orange' : highestRisk >= 30 ? 'yellow' : 'blue'
         }
     ];
 
@@ -277,12 +285,14 @@ const Results = () => {
                             </p>
                         </div>
                         <div className={`px-6 py-3 rounded-2xl font-bold text-lg border-2 ${
-                            highestRisk > 50 ? 'bg-red-500/20 text-red-300 border-red-500/50' :
-                            highestRisk > 30 ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/50' :
-                            'bg-green-500/20 text-green-300 border-green-500/50'
+                            highestRisk >= 70 ? 'bg-red-500/20 text-red-300 border-red-500/50' :
+                            highestRisk >= 50 ? 'bg-orange-500/20 text-orange-300 border-orange-500/50' :
+                            highestRisk >= 30 ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/50' :
+                            'bg-blue-500/20 text-blue-300 border-blue-500/50'
                         }`}>
-                            {highestRisk > 50 ? '⚠️ HIGH RISK' : 
-                             highestRisk > 30 ? '⚡ MODERATE RISK' : 
+                            {highestRisk >= 70 ? '⚠️ HIGH RISK' : 
+                             highestRisk >= 50 ? '🟠 MODERATE-HIGH RISK' :
+                             highestRisk >= 30 ? '⚡ MODERATE RISK' : 
                              '✅ LOW RISK'}
                         </div>
                     </div>

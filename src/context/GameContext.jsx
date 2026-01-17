@@ -35,13 +35,18 @@ export const GameProvider = ({ children }) => {
 
     const [learningDisabilityRisk, setLearningDisabilityRisk] = useState({
         dyslexia: 0,
-        dyscalculia: 0,
+        dyscalculia: 80,
         dysgraphia: 0,
         adhd: 0,
         dyspraxia: 0,
         auditoryProcessing: 0,
         overall: 'Low'
     });
+    
+    // Track math performance for dyscalculia reduction
+    const [mathQuestionsCorrect, setMathQuestionsCorrect] = useState({ easy: 0, tough: 0 });
+    // Track the minimum dyscalculia achieved - never increment above this
+    const [minDyscalculiaAchieved, setMinDyscalculiaAchieved] = useState(80);
     
     // Track emotion shifts for real-time ADHD detection
     const [emotionShiftCount, setEmotionShiftCount] = useState(0);
@@ -80,12 +85,12 @@ export const GameProvider = ({ children }) => {
                                 
                                 // Every 3 emotion shifts, increment ADHD risk with variability
                                 if (newCount % 3 === 0) {
-                                    const increment = 1.2 + (Math.random() * 0.4); // 1.2-1.6% range
+                                    const increment = 0.8 + (Math.random() * 0.3); // 0.8-1.1% range (reduced)
                                     const contextInfo = context.inGame ? '(during gameplay)' : `(during Level ${context.questionDifficulty} question)`;
                                     console.log(`😠➡️😊 Emotion Shift #${newCount} ${contextInfo} - INCREMENTING ADHD risk +${increment.toFixed(1)}%`);
                                     setLearningDisabilityRisk(risk => ({
                                         ...risk,
-                                        adhd: Math.min(risk.adhd + increment, 78)
+                                        adhd: Math.min(risk.adhd + increment, 40)
                                     }));
                                 }
                                 
@@ -205,6 +210,41 @@ export const GameProvider = ({ children }) => {
         const currentEmotionState = emotionData.currentEmotion;
         const timestamp = Date.now();
         
+        // Track math question performance for dyscalculia reduction
+        if (taskType === 'number' && isCorrect) {
+            setMathQuestionsCorrect(prev => {
+                const updated = { ...prev };
+                if (difficulty === 3) {
+                    updated.tough += 1;
+                    // 1 tough question correct = -10% dyscalculia
+                    console.log(`🎯 Tough math question solved! Reducing dyscalculia by 10%`);
+                    setLearningDisabilityRisk(risk => {
+                        const newLevel = Math.max(risk.dyscalculia - 10, 0);
+                        setMinDyscalculiaAchieved(prev => Math.min(prev, newLevel));
+                        return {
+                            ...risk,
+                            dyscalculia: newLevel
+                        };
+                    });
+                } else if (difficulty <= 2) {
+                    updated.easy += 1;
+                    // 2 easy questions correct = -10% dyscalculia
+                    if (updated.easy % 2 === 0) {
+                        console.log(`🎯 Two easy math questions solved! Reducing dyscalculia by 10%`);
+                        setLearningDisabilityRisk(risk => {
+                            const newLevel = Math.max(risk.dyscalculia - 10, 0);
+                            setMinDyscalculiaAchieved(prev => Math.min(prev, newLevel));
+                            return {
+                                ...risk,
+                                dyscalculia: newLevel
+                            };
+                        });
+                    }
+                }
+                return updated;
+            });
+        }
+        
         // Record detailed question data for LLM analysis
         setQuestionLevelData(prev => [...prev, {
             gameId,
@@ -314,26 +354,32 @@ export const GameProvider = ({ children }) => {
                 // Add ADHD risk from rapid emotion shifts ONLY
                 // BUT if attention is high, cap ADHD at very low levels
                 if (hasHighAttention) {
-                    // Good attention = no ADHD, cap at 20%
-                    updated.adhd = Math.min(prev.adhd + riskData.adhdRisk, 20);
+                    // Good attention = no ADHD, cap at 15%
+                    updated.adhd = Math.min(prev.adhd + riskData.adhdRisk, 15);
                 } else {
-                    // Normal ADHD risk calculation with granular increase, cap at 80%
-                    updated.adhd = Math.min(prev.adhd + riskData.adhdRisk + (riskIncrease * 0.5), 80);
+                    // Normal ADHD risk calculation with granular increase, cap at 40%
+                    updated.adhd = Math.min(prev.adhd + riskData.adhdRisk + (riskIncrease * 0.3), 40);
                 }
                 
                 // Apply risk based on task type with webcam emotion analysis
                 if (taskType === 'reading') {
-                    updated.dyslexia = Math.min(prev.dyslexia + riskData.totalRisk + riskIncrease, 77);
+                    updated.dyslexia = Math.min(prev.dyslexia + riskData.totalRisk + riskIncrease, 65);
                     console.log(`  Dyslexia risk: ${prev.dyslexia.toFixed(1)}% → ${updated.dyslexia.toFixed(1)}% (+${(riskData.totalRisk + riskIncrease).toFixed(1)}%)`);
                 } else if (taskType === 'number') {
-                    updated.dyscalculia = Math.min(prev.dyscalculia + riskData.totalRisk + riskIncrease, 78);
-                    console.log(`  Dyscalculia risk: ${prev.dyscalculia.toFixed(1)}% → ${updated.dyscalculia.toFixed(1)}% (+${(riskData.totalRisk + riskIncrease).toFixed(1)}%)`);
+                    // Never increment above the minimum achieved through solving math questions
+                    const calculatedRisk = prev.dyscalculia + riskData.totalRisk + riskIncrease;
+                    updated.dyscalculia = Math.min(calculatedRisk, minDyscalculiaAchieved);
+                    if (calculatedRisk > minDyscalculiaAchieved) {
+                        console.log(`  Dyscalculia risk: ${prev.dyscalculia.toFixed(1)}% → ${updated.dyscalculia.toFixed(1)}% (CAPPED at ${minDyscalculiaAchieved}% - student has proven math ability)`);
+                    } else {
+                        console.log(`  Dyscalculia risk: ${prev.dyscalculia.toFixed(1)}% → ${updated.dyscalculia.toFixed(1)}% (+${(riskData.totalRisk + riskIncrease).toFixed(1)}%)`);
+                    }
                 } else if (taskType === 'writing' || taskType === 'attention') {
                     // Attention tasks can indicate dysgraphia or ADHD
-                    updated.dysgraphia = Math.min(prev.dysgraphia + riskData.totalRisk + (riskIncrease * 0.6), 76);
-                    updated.adhd = Math.min(prev.adhd + riskData.adhdRisk + (riskIncrease * 0.8), 77);
-                    console.log(`  Dysgraphia risk: ${prev.dysgraphia.toFixed(1)}% → ${updated.dysgraphia.toFixed(1)}% (+${(riskData.totalRisk + riskIncrease * 0.6).toFixed(1)}%)`);
-                    console.log(`  ADHD risk: ${prev.adhd.toFixed(1)}% → ${updated.adhd.toFixed(1)}% (+${(riskData.adhdRisk + riskIncrease * 0.8).toFixed(1)}%)`);
+                    updated.dysgraphia = Math.min(prev.dysgraphia + riskData.totalRisk + (riskIncrease * 0.4), 50);
+                    updated.adhd = Math.min(prev.adhd + riskData.adhdRisk + (riskIncrease * 0.5), 40);
+                    console.log(`  Dysgraphia risk: ${prev.dysgraphia.toFixed(1)}% → ${updated.dysgraphia.toFixed(1)}% (+${(riskData.totalRisk + riskIncrease * 0.4).toFixed(1)}%) [capped at 50%]`);
+                    console.log(`  ADHD risk: ${prev.adhd.toFixed(1)}% → ${updated.adhd.toFixed(1)}% (+${(riskData.adhdRisk + riskIncrease * 0.5).toFixed(1)}%) [capped at 40%]`);
                 }
 
                 // Calculate overall risk including ADHD (more conservative thresholds)
@@ -346,7 +392,6 @@ export const GameProvider = ({ children }) => {
             return riskData.totalRisk + riskIncrease;
         }
         return riskIncrease;
-        return 0;
     };
 
     const updateGameResult = (gameId, resultData) => {
@@ -426,11 +471,16 @@ export const GameProvider = ({ children }) => {
                         const decrement = 3.2 + (Math.random() * 0.5); // 3.2-3.7% range
                         console.log(`⏱️ Void Challenge: High score + good time = DECREASING ADHD risk -${decrement.toFixed(1)}%`);
                         updated.adhd = Math.max(updated.adhd - decrement, 0);
+                        // Also cap dysgraphia at 50% if they perform well
+                        if (updated.dysgraphia > 50) {
+                            console.log(`🚀 Void Challenge: High score (${score}) = CAPPING Dysgraphia at 50%`);
+                            updated.dysgraphia = 50;
+                        }
                     } else if (score < 100) {
                         // Poor concentration - gave up quickly
-                        const increment = 4.8 + emotionFactor + (Math.random() * 0.7); // 5.0-6.1% range
+                        const increment = 2.5 + emotionFactor + (Math.random() * 0.4); // Reduced
                         console.log(`⏱️ Void Challenge: Low score + short time = INCREMENTING ADHD risk +${increment.toFixed(1)}% (emotion: ${emotionData.currentEmotion})`);
-                        updated.adhd = Math.min(updated.adhd + increment, 77);
+                        updated.adhd = Math.min(updated.adhd + increment, 40);
                     }
                 }
                 
@@ -445,14 +495,14 @@ export const GameProvider = ({ children }) => {
                         updated.dysgraphia = Math.max(updated.dysgraphia - decrement, 0);
                     } else if (score < 150) {
                         // Struggled with basic grids - poor memory
-                        const increment = 6.3 + (Math.random() * 0.8); // 6.3-7.1% range
+                        const increment = 4.0 + (Math.random() * 0.5); // Reduced, cap at 50
                         console.log(`🧠 Memory Quest: Basic grid struggle = INCREMENTING Dysgraphia risk +${increment.toFixed(1)}%`);
-                        updated.dysgraphia = Math.min(updated.dysgraphia + increment, 76);
+                        updated.dysgraphia = Math.min(updated.dysgraphia + increment, 50);
                     } else {
                         // Moderate performance
-                        const increment = 2.6 + (Math.random() * 0.5); // 2.6-3.1% range
+                        const increment = 1.8 + (Math.random() * 0.3); // Reduced, cap at 50
                         console.log(`🧠 Memory Quest: Moderate performance = INCREMENTING Dysgraphia risk +${increment.toFixed(1)}%`);
-                        updated.dysgraphia = Math.min(updated.dysgraphia + increment, 76);
+                        updated.dysgraphia = Math.min(updated.dysgraphia + increment, 50);
                     }
                 }
                 
@@ -461,19 +511,26 @@ export const GameProvider = ({ children }) => {
                     // Pure reading/dyslexia game - HIGH impact
                     const prevValue = updated.dyslexia;
                     
-                    // Good performance REDUCES risk
+                    // Good performance REDUCES risk significantly
                     if (score >= 350) {
-                        const decrement = 5.3 + (Math.random() * 0.8); // 5.3-6.1% range
-                        updated.dyslexia = Math.max(updated.dyslexia - decrement, 0);
-                        console.log(`📉 Dyslexia: ${prevValue.toFixed(1)}% → ${updated.dyslexia.toFixed(1)}% (-${decrement.toFixed(1)}% - excellent reading!)`);  
+                        // Excellent reading - reduce to 60% or current if lower
+                        const targetRisk = Math.min(prevValue, 60);
+                        updated.dyslexia = targetRisk;
+                        console.log(`📉 Dyslexia: ${prevValue.toFixed(1)}% → ${updated.dyslexia.toFixed(1)}% (excellent reading - capped at 60%!)`);  
                     } else if (score >= 250) {
-                        const decrement = 2.7 + (Math.random() * 0.5); // 2.7-3.2% range
-                        updated.dyslexia = Math.max(updated.dyslexia - decrement, 0);
-                        console.log(`📉 Dyslexia: ${prevValue.toFixed(1)}% → ${updated.dyslexia.toFixed(1)}% (-${decrement.toFixed(1)}% - good reading)`); 
+                        // Good reading - reduce toward 60%
+                        const decrement = 5.0 + (Math.random() * 0.5);
+                        updated.dyslexia = Math.max(Math.min(updated.dyslexia - decrement, 60), 0);
+                        console.log(`📉 Dyslexia: ${prevValue.toFixed(1)}% → ${updated.dyslexia.toFixed(1)}% (-${decrement.toFixed(1)}% - good reading, reducing toward 60%)`); 
+                    } else if (score >= 150) {
+                        // Average performance - slight reduction toward 60%
+                        const decrement = 2.0 + (Math.random() * 0.3);
+                        updated.dyslexia = Math.max(Math.min(updated.dyslexia - decrement, 60), 0);
+                        console.log(`📉 Dyslexia: ${prevValue.toFixed(1)}% → ${updated.dyslexia.toFixed(1)}% (-${decrement.toFixed(1)}% - some progress)`); 
                     } else {
-                        // Poor/average performance increases risk
-                        const increment = Math.round(gameRisk * 1.2 * 10) / 10;
-                        updated.dyslexia = Math.min(updated.dyslexia + increment, 77);
+                        // Poor performance - maintain current risk, don't increase much
+                        const increment = Math.round(gameRisk * 0.5 * 10) / 10;
+                        updated.dyslexia = Math.min(updated.dyslexia + increment, 65);
                         console.log(`📈 Dyslexia: ${prevValue.toFixed(1)}% → ${updated.dyslexia.toFixed(1)}% (+${increment.toFixed(1)}%)`);  
                     }
                 } else if (gameId === 'treasureHunter') {
@@ -481,17 +538,24 @@ export const GameProvider = ({ children }) => {
                     const prevValue = updated.dyslexia;
                     
                     if (score >= 350) {
-                        const decrement = 4.9 + (Math.random() * 0.7);
-                        updated.dyslexia = Math.max(updated.dyslexia - decrement, 0);
-                        console.log(`📉 Dyslexia: ${prevValue.toFixed(1)}% → ${updated.dyslexia.toFixed(1)}% (-${decrement.toFixed(1)}% - fast reading!)`);  
+                        // Excellent reading speed - cap at 60%
+                        const targetRisk = Math.min(prevValue, 60);
+                        updated.dyslexia = targetRisk;
+                        console.log(`📉 Dyslexia: ${prevValue.toFixed(1)}% → ${updated.dyslexia.toFixed(1)}% (fast reading - capped at 60%!)`);  
                     } else if (score >= 250) {
-                        const decrement = 2.4 + (Math.random() * 0.4);
-                        updated.dyslexia = Math.max(updated.dyslexia - decrement, 0);
-                        console.log(`📉 Dyslexia: ${prevValue.toFixed(1)}% → ${updated.dyslexia.toFixed(1)}% (-${decrement.toFixed(1)}% - good reading speed)`); 
+                        // Good reading - reduce toward 60%
+                        const decrement = 4.5 + (Math.random() * 0.5);
+                        updated.dyslexia = Math.max(Math.min(updated.dyslexia - decrement, 60), 0);
+                        console.log(`📉 Dyslexia: ${prevValue.toFixed(1)}% → ${updated.dyslexia.toFixed(1)}% (-${decrement.toFixed(1)}% - good reading speed, reducing toward 60%)`); 
+                    } else if (score >= 150) {
+                        // Average performance
+                        const decrement = 1.5 + (Math.random() * 0.3);
+                        updated.dyslexia = Math.max(Math.min(updated.dyslexia - decrement, 60), 0);
+                        console.log(`📉 Dyslexia: ${prevValue.toFixed(1)}% → ${updated.dyslexia.toFixed(1)}% (-${decrement.toFixed(1)}% - some reading progress)`); 
                     } else {
-                        const increment = Math.round(gameRisk * 0.95 * 10) / 10;
-                        updated.dyslexia = Math.min(updated.dyslexia + increment, 77);
-                        console.log(`📈 Dyslexia: ${prevValue.toFixed(1)}% → ${updated.dyslexia.toFixed(1)}% (+${increment.toFixed(1)}%)`);  
+                        const increment = Math.round(gameRisk * 0.5 * 10) / 10;
+                        updated.dyslexia = Math.min(updated.dyslexia + increment, 65);
+                        console.log(`📈 Dyslexia: ${prevValue.toFixed(1)}% → ${updated.dyslexia.toFixed(1)}% (+${increment.toFixed(1)}%) [capped at 65%]`);  
                     }
                 } else if (gameId === 'numberNinja') {
                     // Pure math/dyscalculia game - HIGH impact
@@ -499,16 +563,25 @@ export const GameProvider = ({ children }) => {
                     
                     if (score >= 350) {
                         const decrement = 5.6 + (Math.random() * 0.9);
-                        updated.dyscalculia = Math.max(updated.dyscalculia - decrement, 0);
+                        const newLevel = Math.max(updated.dyscalculia - decrement, 0);
+                        updated.dyscalculia = newLevel;
+                        setMinDyscalculiaAchieved(prev => Math.min(prev, newLevel));
                         console.log(`📉 Dyscalculia: ${prevValue.toFixed(1)}% → ${updated.dyscalculia.toFixed(1)}% (-${decrement.toFixed(1)}% - excellent math!)`);  
                     } else if (score >= 250) {
                         const decrement = 2.9 + (Math.random() * 0.5);
-                        updated.dyscalculia = Math.max(updated.dyscalculia - decrement, 0);
+                        const newLevel = Math.max(updated.dyscalculia - decrement, 0);
+                        updated.dyscalculia = newLevel;
+                        setMinDyscalculiaAchieved(prev => Math.min(prev, newLevel));
                         console.log(`📉 Dyscalculia: ${prevValue.toFixed(1)}% → ${updated.dyscalculia.toFixed(1)}% (-${decrement.toFixed(1)}% - good math skills)`); 
                     } else {
                         const increment = Math.round(gameRisk * 1.15 * 10) / 10;
-                        updated.dyscalculia = Math.min(updated.dyscalculia + increment, 78);
-                        console.log(`📈 Dyscalculia: ${prevValue.toFixed(1)}% → ${updated.dyscalculia.toFixed(1)}% (+${increment.toFixed(1)}%)`);  
+                        const calculatedRisk = updated.dyscalculia + increment;
+                        updated.dyscalculia = Math.min(calculatedRisk, minDyscalculiaAchieved);
+                        if (calculatedRisk > minDyscalculiaAchieved) {
+                            console.log(`📈 Dyscalculia: ${prevValue.toFixed(1)}% → ${updated.dyscalculia.toFixed(1)}% (CAPPED at ${minDyscalculiaAchieved}% - has proven math ability)`);
+                        } else {
+                            console.log(`📈 Dyscalculia: ${prevValue.toFixed(1)}% → ${updated.dyscalculia.toFixed(1)}% (+${increment.toFixed(1)}%)`);
+                        }
                     }
                 } else if (gameId === 'defenderChallenge') {
                     // Number sense and operations
@@ -516,16 +589,25 @@ export const GameProvider = ({ children }) => {
                     
                     if (score >= 350) {
                         const decrement = 5.1 + (Math.random() * 0.7);
-                        updated.dyscalculia = Math.max(updated.dyscalculia - decrement, 0);
+                        const newLevel = Math.max(updated.dyscalculia - decrement, 0);
+                        updated.dyscalculia = newLevel;
+                        setMinDyscalculiaAchieved(prev => Math.min(prev, newLevel));
                         console.log(`📉 Dyscalculia: ${prevValue.toFixed(1)}% → ${updated.dyscalculia.toFixed(1)}% (-${decrement.toFixed(1)}% - strong number sense!)`);  
                     } else if (score >= 250) {
                         const decrement = 2.6 + (Math.random() * 0.4);
-                        updated.dyscalculia = Math.max(updated.dyscalculia - decrement, 0);
+                        const newLevel = Math.max(updated.dyscalculia - decrement, 0);
+                        updated.dyscalculia = newLevel;
+                        setMinDyscalculiaAchieved(prev => Math.min(prev, newLevel));
                         console.log(`📉 Dyscalculia: ${prevValue.toFixed(1)}% → ${updated.dyscalculia.toFixed(1)}% (-${decrement.toFixed(1)}% - good calculations)`); 
                     } else {
                         const increment = Math.round(gameRisk * 0.9 * 10) / 10;
-                        updated.dyscalculia = Math.min(updated.dyscalculia + increment, 78);
-                        console.log(`📈 Dyscalculia: ${prevValue.toFixed(1)}% → ${updated.dyscalculia.toFixed(1)}% (+${increment.toFixed(1)}%)`);  
+                        const calculatedRisk = updated.dyscalculia + increment;
+                        updated.dyscalculia = Math.min(calculatedRisk, minDyscalculiaAchieved);
+                        if (calculatedRisk > minDyscalculiaAchieved) {
+                            console.log(`📈 Dyscalculia: ${prevValue.toFixed(1)}% → ${updated.dyscalculia.toFixed(1)}% (CAPPED at ${minDyscalculiaAchieved}% - has proven math ability)`);
+                        } else {
+                            console.log(`📈 Dyscalculia: ${prevValue.toFixed(1)}% → ${updated.dyscalculia.toFixed(1)}% (+${increment.toFixed(1)}%)`);
+                        }
                     }
                 } else if (gameId === 'spatialRecall') {
                     // Visual-spatial/dysgraphia - HIGH impact
@@ -540,38 +622,38 @@ export const GameProvider = ({ children }) => {
                         updated.dysgraphia = Math.max(updated.dysgraphia - decrement, 0);
                         console.log(`📉 Dysgraphia: ${prevValue.toFixed(1)}% → ${updated.dysgraphia.toFixed(1)}% (-${decrement.toFixed(1)}% - good spatial memory)`); 
                     } else {
-                        const increment = Math.round(gameRisk * 1.1 * 10) / 10;
-                        updated.dysgraphia = Math.min(updated.dysgraphia + increment, 76);
-                        console.log(`📈 Dysgraphia: ${prevValue.toFixed(1)}% → ${updated.dysgraphia.toFixed(1)}% (+${increment.toFixed(1)}%)`);  
+                        const increment = Math.round(gameRisk * 0.8 * 10) / 10; // Reduced multiplier
+                        updated.dysgraphia = Math.min(updated.dysgraphia + increment, 50); // Cap at 50%
+                        console.log(`📈 Dysgraphia: ${prevValue.toFixed(1)}% → ${updated.dysgraphia.toFixed(1)}% (+${increment.toFixed(1)}%) [capped at 50%]`);  
                     }
                 } else if (gameId === 'memoryQuest' && score < 150) {
                     // Memory Quest already handled above for good scores
                     // Only add risk for poor performance if not already processed
-                    const increment = Math.round(gameRisk * 0.65 * 10) / 10;
+                    const increment = Math.round(gameRisk * 0.5 * 10) / 10; // Reduced
                     const prevValue = updated.dysgraphia;
-                    updated.dysgraphia = Math.min(updated.dysgraphia + increment, 76);
-                    console.log(`📈 Dysgraphia: ${prevValue.toFixed(1)}% → ${updated.dysgraphia.toFixed(1)}% (+${increment.toFixed(1)}%)`);
+                    updated.dysgraphia = Math.min(updated.dysgraphia + increment, 50); // Cap at 50%
+                    console.log(`📈 Dysgraphia: ${prevValue.toFixed(1)}% → ${updated.dysgraphia.toFixed(1)}% (+${increment.toFixed(1)}%) [capped at 50%]`);
                 } else if (gameId === 'focusFlight' || gameId === 'voidChallenge') {
                     // Attention games with webcam emotion context
                     const prevValue = updated.adhd;
-                    const emotionPenalty = emotionData.currentEmotion === 'frustrated' ? 0.7 : 
-                                          emotionData.currentEmotion === 'sad' ? 0.5 : 0.2;
+                    const emotionPenalty = emotionData.currentEmotion === 'frustrated' ? 0.4 : 
+                                          emotionData.currentEmotion === 'sad' ? 0.3 : 0.1;
                     
                     if (score < 100) {
                         // Very poor attention
-                        const increment = Math.round((gameRisk * 1.2 + emotionPenalty) * 10) / 10;
-                        updated.adhd = Math.min(updated.adhd + increment, 76);
-                        console.log(`📈 ADHD: ${prevValue.toFixed(1)}% → ${updated.adhd.toFixed(1)}% (+${increment.toFixed(1)}% - very low attention, emotion: ${emotionData.currentEmotion})`);
+                        const increment = Math.round((gameRisk * 0.6 + emotionPenalty) * 10) / 10;
+                        updated.adhd = Math.min(updated.adhd + increment, 40); // Cap at 40%
+                        console.log(`📈 ADHD: ${prevValue.toFixed(1)}% → ${updated.adhd.toFixed(1)}% (+${increment.toFixed(1)}% - very low attention, emotion: ${emotionData.currentEmotion}) [capped at 40%]`);
                     } else if (score < 200) {
                         // Poor attention
-                        const increment = Math.round((gameRisk * 0.7 + emotionPenalty) * 10) / 10;
-                        updated.adhd = Math.min(updated.adhd + increment, 76);
-                        console.log(`📈 ADHD: ${prevValue.toFixed(1)}% → ${updated.adhd.toFixed(1)}% (+${increment.toFixed(1)}% - low attention)`);
+                        const increment = Math.round((gameRisk * 0.4 + emotionPenalty) * 10) / 10;
+                        updated.adhd = Math.min(updated.adhd + increment, 40); // Cap at 40%
+                        console.log(`📈 ADHD: ${prevValue.toFixed(1)}% → ${updated.adhd.toFixed(1)}% (+${increment.toFixed(1)}% - low attention) [capped at 40%]`);
                     } else if (score < 300) {
                         // Average attention
-                        const increment = Math.round((gameRisk * 0.3) * 10) / 10;
-                        updated.adhd = Math.min(updated.adhd + increment, 76);
-                        console.log(`📈 ADHD: ${prevValue.toFixed(1)}% → ${updated.adhd.toFixed(1)}% (+${increment.toFixed(1)}% - medium attention)`);
+                        const increment = Math.round((gameRisk * 0.2) * 10) / 10;
+                        updated.adhd = Math.min(updated.adhd + increment, 40); // Cap at 40%
+                        console.log(`📈 ADHD: ${prevValue.toFixed(1)}% → ${updated.adhd.toFixed(1)}% (+${increment.toFixed(1)}% - medium attention) [capped at 40%]`);
                     } else if (score >= 350) {
                         // Excellent attention = SIGNIFICANTLY REDUCE ADHD
                         const decrement = 6.4 + (Math.random() * 0.8); // 6.4-7.2% range
@@ -585,18 +667,26 @@ export const GameProvider = ({ children }) => {
                         const dyslexiaDecrement = 3.2 + (Math.random() * 0.5);
                         const dyscalculiaDecrement = 3.8 + (Math.random() * 0.6);
                         updated.dyslexia = Math.max(updated.dyslexia - dyslexiaDecrement, 0);
-                        updated.dyscalculia = Math.max(updated.dyscalculia - dyscalculiaDecrement, 0);
+                        const newDyscalculia = Math.max(updated.dyscalculia - dyscalculiaDecrement, 0);
+                        updated.dyscalculia = newDyscalculia;
+                        setMinDyscalculiaAchieved(prev => Math.min(prev, newDyscalculia));
                         console.log(`📉 Matrix reasoning bonus: Dyslexia -${dyslexiaDecrement.toFixed(1)}%, Dyscalculia -${dyscalculiaDecrement.toFixed(1)}% (excellent logic!)`);
                     } else if (score >= 250) {
                         const dyslexiaDecrement = 1.6 + (Math.random() * 0.3);
                         const dyscalculiaDecrement = 1.9 + (Math.random() * 0.3);
                         updated.dyslexia = Math.max(updated.dyslexia - dyslexiaDecrement, 0);
-                        updated.dyscalculia = Math.max(updated.dyscalculia - dyscalculiaDecrement, 0);
+                        const newDyscalculia = Math.max(updated.dyscalculia - dyscalculiaDecrement, 0);
+                        updated.dyscalculia = newDyscalculia;
+                        setMinDyscalculiaAchieved(prev => Math.min(prev, newDyscalculia));
                         console.log(`📉 Matrix reasoning bonus: Dyslexia -${dyslexiaDecrement.toFixed(1)}%, Dyscalculia -${dyscalculiaDecrement.toFixed(1)}% (good logic)`);
                     } else {
-                        updated.dyslexia = Math.min(updated.dyslexia + (gameRisk * 0.25), 77);
-                        updated.dyscalculia = Math.min(updated.dyscalculia + (gameRisk * 0.4), 78);
-                        console.log(`📈 Matrix reasoning: Dyslexia +${(gameRisk * 0.25).toFixed(1)}%, Dyscalculia +${(gameRisk * 0.4).toFixed(1)}%`);
+                        updated.dyslexia = Math.min(updated.dyslexia + (gameRisk * 0.25), 65);
+                        const calculatedDyscalculia = updated.dyscalculia + (gameRisk * 0.4);
+                        updated.dyscalculia = Math.min(calculatedDyscalculia, minDyscalculiaAchieved);
+                        const dyscalculiaMsg = calculatedDyscalculia > minDyscalculiaAchieved 
+                            ? `Dyscalculia CAPPED at ${minDyscalculiaAchieved}%` 
+                            : `Dyscalculia +${(gameRisk * 0.4).toFixed(1)}%`;
+                        console.log(`📈 Matrix reasoning: Dyslexia +${(gameRisk * 0.25).toFixed(1)}%, ${dyscalculiaMsg}`);
                     }
                 } else if (gameId === 'warpExplorer') {
                     // Problem solving and strategy
@@ -604,18 +694,26 @@ export const GameProvider = ({ children }) => {
                         const dyslexiaDecrement = 2.8 + (Math.random() * 0.4);
                         const dyscalculiaDecrement = 3.4 + (Math.random() * 0.5);
                         updated.dyslexia = Math.max(updated.dyslexia - dyslexiaDecrement, 0);
-                        updated.dyscalculia = Math.max(updated.dyscalculia - dyscalculiaDecrement, 0);
+                        const newDyscalculia = Math.max(updated.dyscalculia - dyscalculiaDecrement, 0);
+                        updated.dyscalculia = newDyscalculia;
+                        setMinDyscalculiaAchieved(prev => Math.min(prev, newDyscalculia));
                         console.log(`📉 Warp explorer bonus: Dyslexia -${dyslexiaDecrement.toFixed(1)}%, Dyscalculia -${dyscalculiaDecrement.toFixed(1)}% (excellent strategy!)`);
                     } else if (score >= 250) {
                         const dyslexiaDecrement = 1.4 + (Math.random() * 0.2);
                         const dyscalculiaDecrement = 1.7 + (Math.random() * 0.3);
                         updated.dyslexia = Math.max(updated.dyslexia - dyslexiaDecrement, 0);
-                        updated.dyscalculia = Math.max(updated.dyscalculia - dyscalculiaDecrement, 0);
+                        const newDyscalculia = Math.max(updated.dyscalculia - dyscalculiaDecrement, 0);
+                        updated.dyscalculia = newDyscalculia;
+                        setMinDyscalculiaAchieved(prev => Math.min(prev, newDyscalculia));
                         console.log(`📉 Warp explorer bonus: Dyslexia -${dyslexiaDecrement.toFixed(1)}%, Dyscalculia -${dyscalculiaDecrement.toFixed(1)}% (good problem solving)`);
                     } else {
-                        updated.dyslexia = Math.min(updated.dyslexia + (gameRisk * 0.2), 77);
-                        updated.dyscalculia = Math.min(updated.dyscalculia + (gameRisk * 0.35), 78);
-                        console.log(`📈 Warp explorer: Dyslexia +${(gameRisk * 0.2).toFixed(1)}%, Dyscalculia +${(gameRisk * 0.35).toFixed(1)}%`);
+                        updated.dyslexia = Math.min(updated.dyslexia + (gameRisk * 0.2), 65);
+                        const calculatedDyscalculia = updated.dyscalculia + (gameRisk * 0.35);
+                        updated.dyscalculia = Math.min(calculatedDyscalculia, minDyscalculiaAchieved);
+                        const dyscalculiaMsg = calculatedDyscalculia > minDyscalculiaAchieved 
+                            ? `Dyscalculia CAPPED at ${minDyscalculiaAchieved}%` 
+                            : `Dyscalculia +${(gameRisk * 0.35).toFixed(1)}%`;
+                        console.log(`📈 Warp explorer: Dyslexia +${(gameRisk * 0.2).toFixed(1)}%, ${dyscalculiaMsg}`);
                     }
                 } else if (gameId === 'bridgeGame') {
                     // Motor coordination - affects dyspraxia
